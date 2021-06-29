@@ -107,19 +107,40 @@ app.post("/api/users/:_id/exercises", async (req, res) => {
     const newFields = {
       description: description,
       duration: duration,
-      date: date,
+      date: date.toString(),
     };
     const updatedUser = await userModel.findOneAndUpdate({ _id: userId }, { $push: { log: newFields } }, { new: true, runValidators: true });
+
     res.json({
       _id: updatedUser._id,
       username: updatedUser.username,
-      date: updatedUser.date,
-      description: updatedUser.description,
-      duration: updatedUser.duration,
+      date: updatedUser.log[updatedUser.log.length - 1].date,
+      description: updatedUser.log[updatedUser.log.length - 1].description,
+      duration: updatedUser.log[updatedUser.log.length - 1].duration,
     });
   } catch (error) {
     console.log(error);
   }
+});
+
+// get user all exercises log and count
+
+app.get("/api/users/:_id/logs", async (req, res) => {
+  const userId = await req.params._id;
+
+  const userObj = await userModel.findOne({ _id: userId });
+
+  const logs = userObj.log;
+  const newLogs = logs.map((exc) => {
+    const { description, duration, date } = exc;
+    return {
+      description,
+      duration,
+      date: date.toString(),
+    };
+  });
+  const count = newLogs.length;
+  res.json({ _id: userId, username: userObj.username, count: count, log: newLogs });
 });
 
 // Connect to DB  to server
