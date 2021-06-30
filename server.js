@@ -93,14 +93,14 @@ app.post("/api/users/:_id/exercises", async (req, res) => {
     // get date input or create
     let date;
     if (!req.body.date) {
-      date = new Date(); // if no date provided set to current date
+      date = new Date().toDateString(); // if no date provided set to current date
     } else {
       // check for date input format yyyy-mm-dd
       var date_regex = /^\d{4}\-\d{1,2}\-\d{1,2}$/;
       if (!date_regex.test(req.body.date)) {
         return res.json({ message: "Incorrect date format. Please try again." });
       } else {
-        date = new Date(req.body.date);
+        date = new Date(req.body.date).toDateString();
       }
     }
 
@@ -114,7 +114,7 @@ app.post("/api/users/:_id/exercises", async (req, res) => {
     res.json({
       _id: updatedUser._id,
       username: updatedUser.username,
-      date: updatedUser.log[updatedUser.log.length - 1].date,
+      date: updatedUser.log[updatedUser.log.length - 1].date.toDateString(),
       description: updatedUser.log[updatedUser.log.length - 1].description,
       duration: updatedUser.log[updatedUser.log.length - 1].duration,
     });
@@ -127,20 +127,99 @@ app.post("/api/users/:_id/exercises", async (req, res) => {
 
 app.get("/api/users/:_id/logs", async (req, res) => {
   const userId = await req.params._id;
+  let { from, to, limit } = req.query;
+  // const userObj = await userModel.findOne({ _id: userId });
 
-  const userObj = await userModel.findOne({ _id: userId });
+  // if (!userObj) {
+  //   res.send("Incorrect user Id");
+  // }
 
-  const logs = userObj.log;
-  const newLogs = logs.map((exc) => {
-    const { description, duration, date } = exc;
-    return {
-      description,
-      duration,
-      date: date.toString(),
-    };
+  // // from,to parameters
+
+  // // limit parameter
+  // let logs = userObj.log;
+  // if (!limit) {
+  //   const newLogs = logs.map((exc) => {
+  //     const { description, duration, date } = exc;
+  //     return {
+  //       description,
+  //       duration,
+  //       date: date,
+  //     };
+  //   });
+  //   const count = newLogs.length;
+  //   res.json({ _id: userId, username: userObj.username, count: count, log: newLogs });
+  // } else {
+  //   const nm = Number(limit);
+  //   const spliceLogs = logs.splice(0, nm);
+  //   const newLogs = spliceLogs.map((exc) => {
+  //     const { description, duration, date } = exc;
+  //     return {
+  //       description,
+  //       duration,
+  //       date: date,
+  //     };
+  //   });
+  //   const count = newLogs.length;
+  //   res.json({ _id: userId, username: userObj.username, count: count, log: newLogs });
+  // }
+
+  userModel.findById(userId, (err, user) => {
+    if (err) {
+      console.error(err);
+    }
+
+    if (user) {
+      let log = user.log;
+      if (from) {
+        log = log.filter((exercise) => new Date(exercise.date).getTime() >= new Date(from).getTime());
+        from = new Date(from).toDateString();
+      }
+      if (to) {
+        log = log.filter((exercise) => new Date(exercise.date).getTime() <= new Date(to).getTime());
+        to = new Date(to).toDateString();
+      }
+      if (limit >= 1) {
+        log = log.slice(0, limit);
+      }
+
+      if (from && !to) {
+        res.json({
+          _id: user.id,
+          username: user.username,
+          from: from,
+          count: log.length,
+          log: log,
+        });
+      } else if (to && !from) {
+        res.json({
+          _id: user.id,
+          username: user.username,
+          to: to,
+          count: log.length,
+          log: log,
+        });
+      } else if (from && to) {
+        res.json({
+          _id: user.id,
+          username: user.username,
+          from: from,
+          to: to,
+          count: log.length,
+          log: log,
+        });
+      } else {
+        res.json({
+          _id: user.id,
+          username: user.username,
+          count: log.length,
+          log: log,
+        });
+      }
+    } else {
+      res.send("unknown userId");
+    }
   });
-  const count = newLogs.length;
-  res.json({ _id: userId, username: userObj.username, count: count, log: newLogs });
 });
 
 // Connect to DB  to server
